@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { createTradeAnalysis, chatWithAgent, directAnthropicChat } from '../services/ai/langchain';
 import { chatHistoryApi } from '../services/api/supabaseApi';
@@ -61,7 +61,7 @@ export const AIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     setCurrentSessionId(crypto.randomUUID());
   }, []);
 
-  // Extract sentiment details from AI response - memoized to prevent recreation
+  // Extract sentiment details from AI response
   const extractSentimentDetails = useCallback((content: string) => {
     // Extract sentiment score using regex
     const scoreMatch = content.toString().match(/Sentiment Score: (\d+)\/100/i);
@@ -211,7 +211,7 @@ export const AIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentSessionId, useDirectAnthropicAPI, directChatHistory, chatHistory, fetchChatHistory, extractSentimentDetails]);
+  }, [user, currentSessionId, useDirectAnthropicAPI, directChatHistory, chatHistory, fetchChatHistory]);
 
   // Method to add messages directly without API call - used for background tasks
   const addDirectMessage = useCallback((userMessage: string, aiResponse: string) => {
@@ -230,8 +230,9 @@ export const AIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, [useDirectAnthropicAPI]);
 
-  // Create a memoized bridge to this context's methods
-  const contextBridge = useMemo(() => {
+  // Register with aiService for background task integration
+  useEffect(() => {
+    // Create a bridge to this context's methods - memoize the implementation
     const handleDirectMessage = (userMessage: string, aiResponse: string) => {
       // Add messages directly to chat history
       if (useDirectAnthropicAPI) {
@@ -272,22 +273,17 @@ export const AIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       }
     };
     
-    return {
+    // Register with aiService
+    registerAIContext({
       addUserMessage,
       addDirectMessage: handleDirectMessage
-    };
-  }, [currentSessionId, addUserMessage, useDirectAnthropicAPI, user, extractSentimentDetails]);
-
-  // Register with aiService for background task integration
-  useEffect(() => {
-    // Register with aiService using the memoized bridge
-    registerAIContext(contextBridge);
+    });
     
     // Return cleanup function to prevent multiple registrations
     return () => {
       unregisterAIContext();
     };
-  }, [contextBridge]); // Only depend on the memoized bridge
+  }, [currentSessionId, addUserMessage, useDirectAnthropicAPI, user, extractSentimentDetails]); // Only include the stable dependencies
 
   // Load chat history when user changes
   useEffect(() => {
@@ -342,10 +338,5 @@ export const AIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   );
 };
 
-export const useAI = () => {
-  const context = useContext(AIContext);
-  if (context === undefined) {
-    throw new Error('useAI must be used within an AIProvider');
-  }
-  return context;
-};
+// Export the AIContext so it can be used by the useAI hook
+export { AIContext };

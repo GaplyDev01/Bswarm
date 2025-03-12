@@ -1,15 +1,15 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { Background } from './components/Background';
-import { AgentProfile } from './components/AgentProfile';
 import { Dashboard } from './components/portal/Dashboard';
-import { ArrowRight, BarChart2, Brain, Wallet, LineChart } from 'lucide-react';
+import { BarChart2, Brain, Wallet, LineChart } from 'lucide-react';
 import { Footer } from './components/Footer';
 import { ScrollAnimationDemo } from './components/ScrollAnimationDemo';
 import { LoginPage } from './pages/LoginPage';
 import { EmailConfirmationPage } from './pages/EmailConfirmationPage';
 import { RequireAuth } from './components/auth/RequireAuth';
 import { useSupabase } from './context/SupabaseContext';
+import { CardDataProvider } from './contexts/CardDataContext';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();

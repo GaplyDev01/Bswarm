@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, MessageCircle, ArrowRight, MessageSquare, Search, Calendar, AlertCircle } from 'lucide-react';
-import { useAI } from '../../context/AIContext';
+import { useAI } from '../../hooks/useAI';
 import { format } from 'date-fns';
 import { ChatHistoryItem } from '../../types/supabase';
 

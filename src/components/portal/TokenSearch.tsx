@@ -4,7 +4,7 @@ import { TokenData, CoinGeckoSearchCoin } from '../../types';
 import { coinGeckoAPI } from '../../services/api';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useToken } from '../../context/TokenContext';
-import { useAI } from '../../context/AIContext';
+import { useAI } from '../../hooks/useAI';
 
 export const TokenSearch: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');

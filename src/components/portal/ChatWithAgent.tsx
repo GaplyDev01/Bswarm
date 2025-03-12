@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useAI } from '../../context/AIContext';
+import React, { useState, useRef, useEffect, forwardRef, ForwardedRef } from 'react';
+import { useAI } from '../../hooks/useAI';
 import { Send, ChevronDown } from 'lucide-react';
 import { useSupabase } from '../../context/SupabaseContext';
 
@@ -9,7 +9,7 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-export const ChatWithAgent: React.FC = () => {
+export const ChatWithAgent = forwardRef((props, ref: ForwardedRef<HTMLDivElement>) => {
   const { isLoading, chatHistory, directChatHistory, addUserMessage, useDirectAnthropicAPI } = useAI();
   const { user } = useSupabase();
   const [inputMessage, setInputMessage] = useState('');
@@ -211,7 +211,16 @@ export const ChatWithAgent: React.FC = () => {
       </div>
       
       <div 
-        ref={messagesContainerRef}
+        ref={(node) => {
+          // Forward the ref to the parent component
+          if (typeof ref === 'function') {
+            ref(node);
+          } else if (ref) {
+            ref.current = node;
+          }
+          // Also store locally
+          messagesContainerRef.current = node;
+        }}
         className="flex-1 overflow-y-auto py-6 px-8 space-y-6 relative circuit-container"
       >
         {messages.map((message, index) => (
@@ -285,4 +294,4 @@ export const ChatWithAgent: React.FC = () => {
       </div>
     </div>
   );
-};
+});

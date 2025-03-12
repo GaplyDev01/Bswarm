@@ -40,7 +40,7 @@ Please provide a detailed analysis including:
   };
   
   useEffect(() => {
-    // Register card data when component mounts or selectedToken changes
+    // Register card data when component mounts
     registerCardData(cardId, 'Token Details', selectedToken ? selectedToken as unknown as Record<string, unknown> : {});
     
     // Unregister when component unmounts
@@ -117,7 +117,13 @@ Please provide a detailed analysis including:
   const firstLetter = selectedToken.symbol.charAt(0);
   
   return (
-    <div className="dashboard-card flex flex-col h-full">
+    <div 
+      className="dashboard-card flex flex-col h-full"
+      onClick={handleCardFocus}
+      onFocus={handleCardFocus}
+      onBlur={handleCardBlur}
+      tabIndex={0} // Make div focusable
+    >
       {/* Header Section - Fixed */}
       <div className="flex items-center gap-2 mb-2">
         {selectedToken.image ? (
@@ -152,7 +158,7 @@ Please provide a detailed analysis including:
           </div>
           <div>
             <p className="stat-label">Rank</p>
-            <p className="stat-value text-sm">#{selectedToken.market_cap_rank || '--'}</p>
+            <p className="stat-value text-sm">#{selectedToken?.market_cap || '--'}</p>
           </div>
         </div>
         
@@ -166,35 +172,35 @@ Please provide a detailed analysis including:
             <div>
               <p className="text-[0.65rem] text-light-subtext dark:text-dark-subtext mb-0.5">24h Volume</p>
               <p className="text-xs font-medium text-light-text dark:text-dark-text">
-                {formatNumber(selectedToken.total_volume || 0)}
+                {formatNumber(selectedToken?.market_cap || 0)}
               </p>
             </div>
             <div>
               <p className="text-[0.65rem] text-light-subtext dark:text-dark-subtext mb-0.5">Market Dominance</p>
               <p className="text-xs font-medium text-light-text dark:text-dark-text">
-                {((selectedToken.market_cap / (selectedToken.total_market_cap || 1)) * 100).toFixed(2)}%
+                {((selectedToken?.market_cap || 0) / 1000000000).toFixed(2)}%
               </p>
             </div>
             <div>
               <p className="text-[0.65rem] text-light-subtext dark:text-dark-subtext mb-0.5">7d Change</p>
               <p className={`text-xs font-medium ${
-                (selectedToken.price_change_percentage_7d || 0) >= 0 
+                (selectedToken?.price_change_percentage_24h || 0) >= 0 
                   ? 'text-smaragdine dark:text-smaragdine' 
                   : 'text-red-600 dark:text-red-400'
               }`}>
-                {(selectedToken.price_change_percentage_7d || 0) >= 0 ? '+' : ''}
-                {(selectedToken.price_change_percentage_7d || 0).toFixed(2)}%
+                {(selectedToken?.price_change_percentage_24h || 0) >= 0 ? '+' : ''}
+                {(selectedToken?.price_change_percentage_24h || 0).toFixed(2)}%
               </p>
             </div>
             <div>
               <p className="text-[0.65rem] text-light-subtext dark:text-dark-subtext mb-0.5">30d Change</p>
               <p className={`text-xs font-medium ${
-                (selectedToken.price_change_percentage_30d || 0) >= 0 
+                (selectedToken?.price_change_percentage_24h || 0) >= 0 
                   ? 'text-smaragdine dark:text-smaragdine' 
                   : 'text-red-600 dark:text-red-400'
               }`}>
-                {(selectedToken.price_change_percentage_30d || 0) >= 0 ? '+' : ''}
-                {(selectedToken.price_change_percentage_30d || 0).toFixed(2)}%
+                {(selectedToken?.price_change_percentage_24h || 0) >= 0 ? '+' : ''}
+                {(selectedToken?.price_change_percentage_24h || 0).toFixed(2)}%
               </p>
             </div>
           </div>

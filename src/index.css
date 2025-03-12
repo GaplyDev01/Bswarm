@@ -56,6 +56,51 @@
   .dark ::-webkit-scrollbar-thumb:hover {
     background-color: rgba(22, 153, 118, 0.7);
   }
+
+  /* Background task notification for tabs */
+  .tab-notification {
+    position: relative;
+    animation: tab-pulse 2s infinite;
+  }
+  
+  .tab-notification::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background-color: rgb(22, 153, 118);
+    border-radius: 50%;
+    animation: tab-dot-pulse 2s infinite;
+  }
+  
+  @keyframes tab-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(22, 153, 118, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 6px rgba(22, 153, 118, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(22, 153, 118, 0);
+    }
+  }
+  
+  @keyframes tab-dot-pulse {
+    0% {
+      transform: scale(0.8);
+      opacity: 0.7;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0.8);
+      opacity: 0.7;
+    }
+  }
 }
 
 @layer components {
@@ -521,5 +566,61 @@
     margin-top: -5px;
     cursor: w-resize;
     transform: rotate(135deg);
+  }
+}
+
+/* Highlighted message animation for background tasks */
+@keyframes highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(64, 250, 196, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(64, 250, 196, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(64, 250, 196, 0);
+  }
+}
+
+.highlighted-message {
+  animation: highlight-pulse 2s ease-in-out;
+  border: 1px solid #40fac4 !important;
+  position: relative;
+}
+
+.highlighted-message::after {
+  content: 'From Background Task';
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(64, 250, 196, 0.2);
+  color: #40fac4;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+  animation: fade-out 3s forwards;
+}
+
+@keyframes fade-out {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Animation for pulse-once for notifications */
+.animate-pulse-once {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 1;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
   }
 }

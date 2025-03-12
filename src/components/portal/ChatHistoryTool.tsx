@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAI } from '../../context/AIContext';
+import { useAI } from '../../hooks/useAI';
 import { useSupabase } from '../../context/SupabaseContext';
 import { MessageSquare, BarChart2, ChevronRight, Calendar, ArrowUpRight, RefreshCw } from 'lucide-react';
 import { ChatHistoryItem } from '../../types/supabase';

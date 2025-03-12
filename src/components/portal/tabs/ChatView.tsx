@@ -7,47 +7,16 @@ import {
   Settings, 
   ChevronRight, 
   ChevronLeft, 
-  BarChart2, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertCircle, 
-  Layers,
-  LineChart, 
-  CandlestickChart as Candlestick, 
-  Activity, 
-  Gauge, 
-  Clock, 
-  Zap,
-  BookOpen, 
-  Newspaper, 
-  MessageSquare, 
-  Layout, 
-  Eye, 
-  EyeOff, 
-  Move,
-  Bell,
-  Star,
   X,
   Loader2
 } from 'lucide-react';
-import { useAI } from '../../../context/AIContext';
+import { useAI } from '../../../hooks/useAI';
 import { useToken } from '../../../context/TokenContext';
 import { coinGeckoAPI } from '../../../services/api';
 import { useDebounce } from '../../../hooks/useDebounce';
 import type { CoinGeckoSearchCoin, TokenData } from '../../../types';
-
-// Import all the tool components
-import { ChartTool } from '../tools/ChartTool';
-import { NewsFeedTool } from '../tools/NewsFeedTool';
-import { TechnicalIndicatorsTool } from '../tools/TechnicalIndicatorsTool';
-import { VolumeProfileTool } from '../tools/VolumeProfileTool';
-import { OrderFlowTool } from '../tools/OrderFlowTool';
-import { LiquidityTool } from '../tools/LiquidityTool';
-import { MomentumTool } from '../tools/MomentumTool';
-import { PatternAlertsTool } from '../tools/PatternAlertsTool';
-import { TradingViewTool } from '../tools/TradingViewTool';
-import { MarketDepthTool } from '../tools/MarketDepthTool';
-import { SocialFeedTool } from '../tools/SocialFeedTool';
+import { BackgroundTasksBreadcrumb } from '../../../components/BackgroundTasksBreadcrumb';
+import { getBackgroundTasks } from '../../../services/aiService';
 
 interface SidebarTool {
   id: string;
@@ -64,9 +33,9 @@ export const ChatView: React.FC = () => {
   const { useDirectAnthropicAPI, setUseDirectAnthropicAPI, addUserMessage, chatHistory, directChatHistory } = useAI();
   const { setSelectedToken, selectTokenById } = useToken();
   
-  // Panel visibility and sizing
-  const [leftPanelEnabled, setLeftPanelEnabled] = useState<boolean>(true);
-  const [rightPanelEnabled, setRightPanelEnabled] = useState<boolean>(true);
+  // Panel visibility and sizing - set to false by default
+  const [leftPanelEnabled, setLeftPanelEnabled] = useState<boolean>(false);
+  const [rightPanelEnabled, setRightPanelEnabled] = useState<boolean>(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState<boolean>(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState<boolean>(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState<number>(260); // Default width in pixels
@@ -95,22 +64,36 @@ export const ChatView: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   
-  const [sidebarTools, setSidebarTools] = useState<SidebarTool[]>([
-    { id: 'price-chart', name: 'Price Chart', icon: <LineChart size={18} />, category: 'charts', visible: true },
-    { id: 'trading-view', name: 'TradingView', icon: <Candlestick size={18} />, category: 'charts', visible: true },
-    { id: 'indicators', name: 'Technical Indicators', icon: <Activity size={18} />, category: 'analysis', visible: true },
-    { id: 'volume-profile', name: 'Volume Profile', icon: <BarChart2 size={18} />, category: 'analysis', visible: true },
-    { id: 'momentum', name: 'Momentum Scanner', icon: <Gauge size={18} />, category: 'analysis', visible: true },
-    { id: 'market-depth', name: 'Market Depth', icon: <Layers size={18} />, category: 'analysis', visible: true },
-    { id: 'order-flow', name: 'Order Flow', icon: <TrendingUp size={18} />, category: 'analysis', visible: true },
-    { id: 'liquidity', name: 'Liquidity Analysis', icon: <Zap size={18} />, category: 'analysis', visible: true },
-    { id: 'news-feed', name: 'News Feed', icon: <Newspaper size={18} />, category: 'news', visible: true },
-    { id: 'social-feed', name: 'Social Sentiment', icon: <MessageSquare size={18} />, category: 'news', visible: true },
-    { id: 'research', name: 'Research Reports', icon: <BookOpen size={18} />, category: 'news', visible: true },
-    { id: 'price-alerts', name: 'Price Alerts', icon: <Bell size={18} />, category: 'alerts', visible: true },
-    { id: 'pattern-alerts', name: 'Pattern Alerts', icon: <Star size={18} />, category: 'alerts', visible: true },
-    { id: 'volume-alerts', name: 'Volume Alerts', icon: <Activity size={18} />, category: 'alerts', visible: true },
-  ]);
+  // Empty sidebar tools array
+  const [sidebarTools, setSidebarTools] = useState<SidebarTool[]>([]);
+  
+  // Map dashboard card IDs to chat tool IDs
+  const dashboardToToolMap: { [key: string]: string } = {
+    'priceChart': 'price-chart',
+    'tradingView': 'trading-view',
+    'technicalIndicators': 'indicators',
+    'volumeProfile': 'volume-profile',
+    'momentum': 'momentum',
+    'marketDepth': 'market-depth',
+    'orderFlow': 'order-flow',
+    'liquidity': 'liquidity',
+    'newsFeed': 'news-feed',
+    'socialFeed': 'social-feed',
+    'patternAlerts': 'pattern-alerts',
+  };
+  
+  // Load tools visibility from dashboard preferences - keep this function but it won't do anything with empty sidebarTools
+  useEffect(() => {
+    const savedPreferences = localStorage.getItem('dashboard_preferences');
+    if (savedPreferences) {
+      try {
+        const preferences = JSON.parse(savedPreferences);
+        // No need to update sidebarTools since we're keeping it empty
+      } catch (error) {
+        console.error('Error loading dashboard preferences:', error);
+      }
+    }
+  }, []);
   
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   
@@ -293,10 +276,50 @@ export const ChatView: React.FC = () => {
   }, [debouncedSearchTerm]);
 
   const toggleToolVisibility = (toolId: string) => {
+    // Get the dashboard preferences
+    const savedPreferences = localStorage.getItem('dashboard_preferences');
+    let dashboardVisibleCards: string[] = [];
+    
+    // Parse dashboard preferences if they exist
+    if (savedPreferences) {
+      try {
+        const preferences = JSON.parse(savedPreferences);
+        if (preferences.visibleCards) {
+          dashboardVisibleCards = preferences.visibleCards;
+        }
+      } catch (error) {
+        console.error('Error parsing dashboard preferences:', error);
+      }
+    }
+    
+    // Find the corresponding dashboard card ID for this tool
+    const dashboardCardId = Object.keys(dashboardToToolMap).find(
+      key => dashboardToToolMap[key] === toolId
+    );
+    
     setSidebarTools(prev => 
-      prev.map(tool => 
-        tool.id === toolId ? { ...tool, visible: !tool.visible } : tool
-      )
+      prev.map(tool => {
+        if (tool.id === toolId) {
+          // If the tool is currently visible, we can always turn it off
+          if (tool.visible) {
+            return { ...tool, visible: false };
+          } 
+          // If trying to turn it on, check if it's enabled in the dashboard
+          else {
+            // If there's no corresponding dashboard card, allow toggle
+            if (!dashboardCardId) {
+              return { ...tool, visible: true };
+            }
+            
+            // Only allow enabling if it's visible in the dashboard
+            return { 
+              ...tool, 
+              visible: dashboardVisibleCards.includes(dashboardCardId)
+            };
+          }
+        }
+        return tool;
+      })
     );
   };
 
@@ -454,47 +477,17 @@ Please provide a detailed analysis including:
   }, []);
 
   const getSideTools = (side: 'left' | 'right') => {
-    const categories = side === 'left' 
-      ? ['analysis', 'charts'] 
-      : ['news', 'alerts'];
-    
-    return sidebarTools.filter(tool => 
-      tool.visible && categories.includes(tool.category)
-    );
+    // Always return an empty array since we're not using any tools
+    return [];
   };
 
   // Render the appropriate tool component based on the tool id
   const renderToolComponent = (toolId: string) => {
-    switch (toolId) {
-      case 'price-chart':
-        return <ChartTool />;
-      case 'trading-view':
-        return <TradingViewTool symbol="SOLUSDT" />;
-      case 'indicators':
-        return <TechnicalIndicatorsTool />;
-      case 'volume-profile':
-        return <VolumeProfileTool />;
-      case 'momentum':
-        return <MomentumTool />;
-      case 'market-depth':
-        return <MarketDepthTool />;
-      case 'order-flow':
-        return <OrderFlowTool />;
-      case 'liquidity':
-        return <LiquidityTool />;
-      case 'news-feed':
-        return <NewsFeedTool />;
-      case 'social-feed':
-        return <SocialFeedTool />;
-      case 'pattern-alerts':
-        return <PatternAlertsTool />;
-      default:
-        return <div className="text-gray-400 text-center py-4">Tool not implemented yet</div>;
-    }
+    return <div className="text-gray-400 text-center py-4">No tools available</div>;
   };
 
+  // Render an empty tool panel
   const renderToolPanel = (side: 'left' | 'right') => {
-    const sideTools = getSideTools(side);
     const title = side === 'left' ? 'Trading Tools' : 'News & Alerts';
     
     return (
@@ -502,13 +495,6 @@ Please provide a detailed analysis including:
         <div className="flex items-center justify-between p-4 border-b border-viridian/20">
           <h3 className="text-lg font-bold text-viridian">{title}</h3>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowCustomizeModal(true)}
-              className="p-2 rounded-lg hover:bg-viridian/10 text-viridian"
-              title="Customize Tools"
-            >
-              <Layout size={16} />
-            </button>
             <button 
               onClick={() => side === 'left' ? setLeftPanelCollapsed(true) : setRightPanelCollapsed(true)}
               className="p-2 rounded-lg hover:bg-viridian/10 text-viridian"
@@ -519,36 +505,10 @@ Please provide a detailed analysis including:
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {sideTools.length > 0 ? (
-            sideTools.map((tool) => (
-              <div
-                key={tool.id}
-                className="tool-card"
-              >
-                <div className="tool-card-header">
-                  <div className="flex items-center gap-2">
-                    <span className="text-viridian">{tool.icon}</span>
-                    <h4 className="text-white font-medium">{tool.name}</h4>
-                  </div>
-                </div>
-                
-                <div className="tool-card-content">
-                  {renderToolComponent(tool.id)}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center p-6 text-gray-400">
-              <p>No tools selected</p>
-              <button 
-                onClick={() => setShowCustomizeModal(true)}
-                className="mt-4 px-4 py-2 bg-viridian/20 text-viridian rounded hover:bg-viridian/30 transition-colors"
-              >
-                Customize
-              </button>
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="text-center p-6 text-gray-400">
+            <p>No tools available</p>
+          </div>
         </div>
       </div>
     );
@@ -563,6 +523,83 @@ Please provide a detailed analysis including:
   // Ensure panel sizes are valid
   const constrainedLeftWidth = Math.min(leftPanelWidth, maxLeftWidth);
   const constrainedRightWidth = Math.min(rightPanelWidth, maxRightWidth);
+
+  // Add these state variables for managing chat navigation
+  const [highlightedMessageIndex, setHighlightedMessageIndex] = useState<number | null>(null);
+  const [needsScroll, setNeedsScroll] = useState<boolean>(false);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  
+  // Add this function to handle viewing task in chat
+  const handleViewTaskInChat = (taskId: string) => {
+    // Find the task to get its text
+    const backgroundTasks = getBackgroundTasks();
+    const task = backgroundTasks.find(t => t.id === taskId);
+    
+    if (!task || !task.addedToChatHistory) return;
+    
+    // Find the message in chat history that matches the task
+    let messageIndex = -1;
+    
+    if (useDirectAnthropicAPI) {
+      // For direct API, find in directChatHistory
+      for (let i = 0; i < directChatHistory.length; i++) {
+        if (directChatHistory[i].role === 'user' && 
+            directChatHistory[i].content.includes(task.text.substring(0, 20))) {
+          messageIndex = i;
+          break;
+        }
+      }
+    } else {
+      // For LangChain, find in chatHistory
+      for (let i = 0; i < chatHistory.length; i++) {
+        const content = chatHistory[i].content as string;
+        if (chatHistory[i]._getType() === 'human' && 
+            content.includes(task.text.substring(0, 20))) {
+          messageIndex = i;
+          break;
+        }
+      }
+    }
+    
+    if (messageIndex >= 0) {
+      // Set the highlighted message index
+      setHighlightedMessageIndex(messageIndex);
+      setNeedsScroll(true);
+      
+      // Close the breadcrumb
+      const event = new CustomEvent('ai_task_event', {
+        detail: { type: 'breadcrumb_collapse', payload: {} }
+      });
+      window.dispatchEvent(event);
+    }
+  };
+  
+  // Add an effect to scroll to highlighted message
+  useEffect(() => {
+    if (needsScroll && highlightedMessageIndex !== null && chatContainerRef.current) {
+      // Find the message element by index
+      // This assumes ChatWithAgent has refs or data-attributes for messages
+      const messageElements = chatContainerRef.current.querySelectorAll('.message-box');
+      if (messageElements && messageElements[highlightedMessageIndex]) {
+        messageElements[highlightedMessageIndex].scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'center'
+        });
+        
+        // Add a highlight class
+        messageElements[highlightedMessageIndex].classList.add('highlighted-message');
+        
+        // Remove the highlight after 3 seconds
+        setTimeout(() => {
+          if (messageElements[highlightedMessageIndex]) {
+            messageElements[highlightedMessageIndex].classList.remove('highlighted-message');
+          }
+        }, 3000);
+        
+        setNeedsScroll(false);
+      }
+    }
+  }, [needsScroll, highlightedMessageIndex]);
 
   return (
     <div className="absolute inset-0 flex overflow-hidden select-none">
@@ -668,8 +705,12 @@ Please provide a detailed analysis including:
           </div>
         </div>
 
-        <div className="flex-1 overflow-hidden bg-[#0C1016]">
-          <ChatWithAgent />
+        <div className="flex-1 relative">
+          <ChatWithAgent ref={chatContainerRef} />
+          
+          <BackgroundTasksBreadcrumb 
+            onViewInChat={handleViewTaskInChat}
+          />
         </div>
       </div>
 
@@ -724,6 +765,20 @@ Please provide a detailed analysis including:
                 <X size={20} className="text-viridian" />
               </button>
             </div>
+            
+            {/* Dashboard integration notice */}
+            <div className="mb-6 p-3 rounded-lg bg-viridian/10 border border-viridian/30">
+              <p className="text-sm text-gray-300">
+                <span className="text-viridian font-medium">Note:</span> Tools must first be enabled in the dashboard before they can be used in the chat interface. 
+                You can enable tools by visiting the <button 
+                  onClick={() => {
+                    setShowCustomizeModal(false);
+                    navigate('/portal?tab=dashboard');
+                  }}
+                  className="text-viridian underline hover:text-viridian/80"
+                >Dashboard</button> and opening preferences.
+              </p>
+            </div>
 
             <div className="space-y-6">
               {['analysis', 'charts', 'news', 'alerts'].map(category => (
@@ -732,27 +787,72 @@ Please provide a detailed analysis including:
                   <div className="space-y-2">
                     {sidebarTools
                       .filter(tool => tool.category === category)
-                      .map(tool => (
-                        <div
-                          key={tool.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-black/30 border border-viridian/20"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-viridian">{tool.icon}</span>
-                            <span className="text-white">{tool.name}</span>
-                          </div>
-                          <button
-                            onClick={() => toggleToolVisibility(tool.id)}
-                            className="p-2 rounded-lg bg-viridian/10 hover:bg-viridian/20 transition-colors"
+                      .map(tool => {
+                        // Check if this tool is enabled in dashboard
+                        const dashboardCardId = Object.keys(dashboardToToolMap).find(
+                          key => dashboardToToolMap[key] === tool.id
+                        );
+                        
+                        // Get dashboard preferences
+                        const savedPreferences = localStorage.getItem('dashboard_preferences');
+                        let isEnabledInDashboard = !dashboardCardId; // If no mapping, assume it's enabled
+                        
+                        if (dashboardCardId && savedPreferences) {
+                          try {
+                            const preferences = JSON.parse(savedPreferences);
+                            if (preferences.visibleCards) {
+                              isEnabledInDashboard = preferences.visibleCards.includes(dashboardCardId);
+                            }
+                          } catch (error) {
+                            console.error('Error parsing preferences:', error);
+                          }
+                        }
+                        
+                        return (
+                          <div
+                            key={tool.id}
+                            className={`flex items-center justify-between p-3 rounded-lg border ${
+                              !isEnabledInDashboard && !tool.visible
+                                ? 'bg-black/60 border-gray-800 opacity-70'
+                                : 'bg-black/30 border-viridian/20'
+                            }`}
                           >
-                            {tool.visible ? (
-                              <Eye size={18} className="text-viridian" />
-                            ) : (
-                              <EyeOff size={18} className="text-gray-400" />
-                            )}
-                          </button>
-                        </div>
-                      ))}
+                            <div className="flex items-center gap-3">
+                              <span className={isEnabledInDashboard ? "text-viridian" : "text-gray-500"}>
+                                {tool.icon}
+                              </span>
+                              <div>
+                                <span className="text-white">{tool.name}</span>
+                                {!isEnabledInDashboard && !tool.visible && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Enable this tool in Dashboard preferences first
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => toggleToolVisibility(tool.id)}
+                              className={`p-2 rounded-lg transition-colors ${
+                                isEnabledInDashboard || tool.visible
+                                  ? 'bg-viridian/10 hover:bg-viridian/20'
+                                  : 'bg-gray-800/50 cursor-not-allowed'
+                              }`}
+                              title={!isEnabledInDashboard && !tool.visible 
+                                ? "Enable this tool in Dashboard preferences first" 
+                                : tool.visible 
+                                  ? "Hide tool" 
+                                  : "Show tool"
+                              }
+                            >
+                              {tool.visible ? (
+                                <X size={18} className="text-viridian" />
+                              ) : (
+                                <X size={18} className="text-gray-400" />
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               ))}

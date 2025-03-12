@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useToken } from '../../context/TokenContext';
 import { Brain, ExternalLink, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAI } from '../../context/AIContext';
+import { useAI } from '../../hooks/useAI';
+import { useCardData } from '../../hooks/useCardData';
 
 export const TokenDetailsCard: React.FC = () => {
   const navigate = useNavigate();
   const { selectedToken, loadingToken, tokenError } = useToken();
   const { addUserMessage } = useAI();
+  const cardId = useRef(`token-details-${Date.now()}`).current;
+  const { registerCardData, unregisterCardData, setFocusedCardId } = useCardData();
   
   const handleAIInsights = async () => {
     if (!selectedToken) return;
@@ -34,6 +37,26 @@ Please provide a detailed analysis including:
     setTimeout(() => {
       addUserMessage(initialMessage);
     }, 100);
+  };
+  
+  useEffect(() => {
+    // Register card data when component mounts or selectedToken changes
+    registerCardData(cardId, 'Token Details', selectedToken ? selectedToken as unknown as Record<string, unknown> : {});
+    
+    // Unregister when component unmounts
+    return () => {
+      unregisterCardData(cardId);
+    };
+  }, [cardId, registerCardData, unregisterCardData, selectedToken]);
+  
+  // Handle focus on card
+  const handleCardFocus = () => {
+    setFocusedCardId(cardId);
+  };
+  
+  // Handle blur on card
+  const handleCardBlur = () => {
+    setFocusedCardId(null);
   };
   
   if (loadingToken) {
